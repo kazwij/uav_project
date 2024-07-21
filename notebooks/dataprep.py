@@ -36,18 +36,24 @@ def concat_files(df_list):
     this function will take list of dataframes and concat them 
     printout each data frames columns count and final concat df column count 
     '''
-    a = len(df_list)
-    i=0
-    raw_total = []
-    while i<a:
-        raw_size =df_list[i].shape[0] 
-        print(f'dataframe {i} raw size {raw_size}')
-        i = i+1
-        raw_total.append(raw_size) 
- 
-    new_df = pd.concat(df_list)
-    print(f'total concat raws are {sum(raw_total)}')
-    return new_df
+    try:
+        a = len(df_list)
+        i=0
+        raw_total = []
+        while i<a:
+            raw_size =df_list[i].shape[0] 
+            print(f'dataframe {i} raw size {raw_size}')
+            i = i+1
+            raw_total.append(raw_size) 
+    
+        new_df = pd.concat(df_list)
+        print(f'total concat raws are {sum(raw_total)}')
+        print(f'concatination successfully completed  ')
+        return new_df
+    
+    except Exception as e:
+        print(f'below  error occured when executing the funtion {e}')
+
 #concat the files and rename the columns to python convension
 exp_df = concat_files([df0,df1,df2]).rename(
    columns = {"Propeller's Name":"propellers_name", "Blade's Name":"blades_name", "Propeller's Brand":"propellers_brand",
@@ -59,6 +65,45 @@ geo_df = concat_files([df3,df4,df5]).rename(
     columns ={"Blade's Name":"blades_name", "Propeller's Brand":"propellers_brand", "Propeller's Diameter":"propellers_diameter",
        "Propeller's Pitch":"propellers_pitch", "Adimensional Chord - c/R":"adimensional_chord_c/R",
        "Adimensional Radius - r/R":"adimensional_radius_r/R", "beta - Angle Relative to Rotation":"beta_angle_relative_to_rotation"}) 
+
+'''
+TESTING 
+'''
+
+exp_df.shape  #after merging exp_df  (27495,11)
+geo_df.shape #(2316,7)
+
+inner_df = pd.merge(exp_df,geo_df,on='blades_name',how="inner")
+inner_df.shape # (285798,17)
+outer_df = pd.merge(exp_df,geo_df,on='blades_name',how="outer",)
+outer_df.shape # (299082,17)
+#right_df = pd.merge(exp_df,geo_df,on='blades_name',how="outer",)
+
+
+exp_dup=pd.Series(exp_df['blades_name'].value_counts())
+exp_dup.tail()
+exp_dup.shape
+geo_df['blades_name'].value_counts().sum()
+
+len(exp_df['blades_name'].unique())
+
+exp_duplicate   =exp_df[exp_df['blades_name'].duplicated(keep=False)] 
+exp_duplicates.shape
+
+
+df = pd.DataFrame({
+   'A' : [1,2,2,4,5,6],
+   'B':[1,3,5,7,9,11] 
+    
+} 
+)
+df['A'].unique()
+df['A'].value_counts()
+
+
+'''
+TESTING END
+'''
 
 geo_df.head()
 len(geo_df["propellers_diameter"].unique())
@@ -95,6 +140,9 @@ len(exp_df['blades_name'].unique().sum())
 main_df = pd.merge(exp_df,geo_df,on='blades_name',how="inner")
 main_df.head()
 main_df.columns
+main_df.shape
+geo_df.shape
+exp_df.shape
 
 main_df['total_area_of_blades'] = main_df['number_of_blades']*main_df['blade_area']
 
@@ -119,14 +167,11 @@ f"exp_df contain extra {blade_count_diff} blades in the dataset that do not have
 
 )
 print(massage)
-'''
- get names of the blades that do not have their geo_data available
-main_df = pd.merge(exp_df,geo_df,on='blades_name',how="inner")
 
+'
+# get names of the blades that do not have their geo_data available
+df_outer = pd.merge(exp_df,geo_df,on='blades_name',how="outer")
 
-'''
+df_outer.head()
+df_outer.shape
 
-'''
-hi this is just a test
-
-'''
