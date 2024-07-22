@@ -58,23 +58,34 @@ EDA - Exploratary Data Analysis on exp_df and geo_df.
 master_df = pd.merge(exp_df,geo_df,on='blades_name',how='outer')
 master_df.head()
 master_df.info()
-master_df.size
+print(f'A dataset called master_df suceesfully created by merging all datasets. ')
+print(f'it contain {master_df.shape[0]} raws and {master_df.shape[1]}  columns ')
 # dataset contain NaN values.
 
-# checking for missing values 
-master_df.isna().sum()
-# check for duplicates / value count
-pd.Series(master_df['blades_name'].value_counts())
+# checking for missing values
+print('missing values in master_df') 
+print(master_df.isna().sum())
+
+# check for duplicated values considering all the columns
+
+df_duplicated = master_df[master_df.duplicated()]
+
+print(f'dataset after merging contains {df_duplicated.shape[0] } raws of duplicates. ')
+
+# dropping duplicated values
+master_df = master_df.drop_duplicates()
+
+print(f'after dropping duplicates dataset  has {master_df.shape[0] } raws and {master_df.shape[1] }. ')
+
 print('master data set contain duplicated values. It is expected as several experiments can be done on single type blade  ')
 
-exp_duplicate   =exp_df[exp_df['blades_name'].duplicated(keep=False)] 
-exp_duplicate.head()
-
-
+# calculate the chord distrubution and radius distribution 
 master_df['radius'] = master_df['propellers_diameter_x']/2
 master_df.columns
 master_df['chord_distribution'] = master_df['radius']*master_df['adimensional_chord_c/R']
 master_df['radius_distribution'] = master_df['radius']*master_df['adimensional_radius_r/R']
+
+print('calculated the chord distrubution and radius distribution and created seperate columns for each in master_df')
 
 # calculating the area of the propeller
 
@@ -90,17 +101,36 @@ for i,c in zip(R,C):
 #print(Area)
 
 master_df['blade_area'] = pd.Series(Area)
-master_df.head()
-
+#master_df.head()
+print('calculated the blade area and new column addes as blade_area to master_df ')
 # total area of the blades 
 master_df['total_area_of_blades'] = master_df['number_of_blades']*master_df['blade_area']
 
+print('calculated the total blade area and new column addes as total_blade_area to master_df ')
+
 #Disk area calculation
-master_df['Disk_area'] = np.pi*master_df['radius']**2
+master_df['disk_area'] = np.pi*master_df['radius']**2
 master_df.head()
 
+print('calculated the Disk area and create a column called disk_area in the master_df')
 # Calculation of Solidity_value
 
-master_df['solidity_value'] = master_df['blade_area']/master_df['Disk_area']
+master_df['solidity_value'] = master_df['blade_area']/master_df['disk_area']
+print('calculated the solidity value and create a column called solidity_value in the master_df')
 
-master_df['solidity_value'].isna()
+print('updated master_df  ')
+master_df.head()
+
+#checking for missing values in solidity_value 
+missing_value_count = master_df['solidity_value'].isna().sum()
+
+missing_value =  round((missing_value_count/master_df.shape[0])*100,2)
+print(f'solidity values has {missing_value} % of missing values ')
+
+# blades that does not have a solidity value
+
+blades_missing_solidity_value = master_df[master_df['solidity_value'].isna()][['blades_name','solidity_value']]
+blades_missing_solidity_value
+print(f"out of {len(master_df['blades_name'].unique())} unique blades types" )
+print(f'{len(blades_missing_solidity_value['blades_name'].unique())} blades does not have solidity values ')
+
