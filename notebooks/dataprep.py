@@ -1,3 +1,4 @@
+#importing libraries 
 import pandas as pd
 import numpy as np
 
@@ -11,25 +12,6 @@ df2 =  pd.read_csv("../data/experiment_vol3.csv")
 df3 =  pd.read_csv("../data/geom_vol1.csv")
 df4 =  pd.read_csv("../data/geom_vol2.csv")
 df5 =  pd.read_csv("../data/geom_vol3.csv")
-
-
-
-#Display Data
-
-df1.head()
-df2.head()
-df3.head()
-
-df1.info()
-df2.info()
-df3.info()
-
-# check further for any missing valus 
-
-df1.isna().sum()
-df2.isna().sum()
-df3.isna().sum()
-
 
 def concat_files(df_list):
     '''
@@ -66,59 +48,39 @@ geo_df = concat_files([df3,df4,df5]).rename(
        "Propeller's Pitch":"propellers_pitch", "Adimensional Chord - c/R":"adimensional_chord_c/R",
        "Adimensional Radius - r/R":"adimensional_radius_r/R", "beta - Angle Relative to Rotation":"beta_angle_relative_to_rotation"}) 
 
+print('Data frame exp_df and geo_df were created by merging relavent data bases. Columns renamed as per naming convention')
+
 '''
-TESTING 
+EDA - Exploratary Data Analysis on exp_df and geo_df.   
 '''
+#exp_df and geo_df merge to single df as master_df.
+#using "outer" method to merge both to avoid any data lost 
+master_df = pd.merge(exp_df,geo_df,on='blades_name',how='outer')
+master_df.head()
+master_df.info()
+master_df.size
+# dataset contain NaN values.
 
-exp_df.shape  #after merging exp_df  (27495,11)
-geo_df.shape #(2316,7)
-
-inner_df = pd.merge(exp_df,geo_df,on='blades_name',how="inner")
-inner_df.shape # (285798,17)
-outer_df = pd.merge(exp_df,geo_df,on='blades_name',how="outer",)
-outer_df.shape # (299082,17)
-#right_df = pd.merge(exp_df,geo_df,on='blades_name',how="outer",)
-
-
-exp_dup=pd.Series(exp_df['blades_name'].value_counts())
-exp_dup.tail()
-exp_dup.shape
-geo_df['blades_name'].value_counts().sum()
-
-len(exp_df['blades_name'].unique())
+# checking for missing values 
+master_df.isna().sum()
+# check for duplicates / value count
+pd.Series(master_df['blades_name'].value_counts())
+print('master data set contain duplicated values. It is expected as several experiments can be done on single type blade  ')
 
 exp_duplicate   =exp_df[exp_df['blades_name'].duplicated(keep=False)] 
-exp_duplicates.shape
+exp_duplicate.head()
 
 
-df = pd.DataFrame({
-   'A' : [1,2,2,4,5,6],
-   'B':[1,3,5,7,9,11] 
-    
-} 
-)
-df['A'].unique()
-df['A'].value_counts()
-
-
-'''
-TESTING END
-'''
-
-geo_df.head()
-len(geo_df["propellers_diameter"].unique())
-len(exp_df["propellers_diameter"].unique())
-
-geo_df['radius'] = geo_df['propellers_diameter']/2
-
-geo_df['chord_distribution'] = geo_df['radius']*geo_df['adimensional_chord_c/R']
-geo_df['radius_distribution'] = geo_df['radius']*geo_df['adimensional_radius_r/R']
+master_df['radius'] = master_df['propellers_diameter_x']/2
+master_df.columns
+master_df['chord_distribution'] = master_df['radius']*master_df['adimensional_chord_c/R']
+master_df['radius_distribution'] = master_df['radius']*master_df['adimensional_radius_r/R']
 
 # calculating the area of the propeller
 
 step_size = 0.01 # step size define as 0.01 for better accuracy of the area. 
-R = geo_df['radius'].to_numpy()
-C = geo_df['adimensional_chord_c/R'].to_numpy() 
+R = master_df['radius'].to_numpy()
+C = master_df['adimensional_chord_c/R'].to_numpy() 
 Area = []
 for i,c in zip(R,C):
     x = np.arange(0,i,step_size)
@@ -127,51 +89,18 @@ for i,c in zip(R,C):
     Area.append(area)
 #print(Area)
 
-geo_df['blade_area'] = pd.Series(Area)
-geo_df.head()
-exp_df.head()
+master_df['blade_area'] = pd.Series(Area)
+master_df.head()
 
-len(geo_df['blades_name'].unique().sum())
-len(exp_df['blades_name'].unique().sum())
-
-
-# merging to df to a single df based on "blades_name" column
-
-main_df = pd.merge(exp_df,geo_df,on='blades_name',how="inner")
-main_df.head()
-main_df.columns
-main_df.shape
-geo_df.shape
-exp_df.shape
-
-main_df['total_area_of_blades'] = main_df['number_of_blades']*main_df['blade_area']
+# total area of the blades 
+master_df['total_area_of_blades'] = master_df['number_of_blades']*master_df['blade_area']
 
 #Disk area calculation
-main_df['Disk_area'] = np.pi*main_df['radius']**2
-main_df.head()
+master_df['Disk_area'] = np.pi*master_df['radius']**2
+master_df.head()
 
 # Calculation of Solidity_value
 
-main_df['solidity_value'] = main_df['blade_area']/main_df['Disk_area']
+master_df['solidity_value'] = master_df['blade_area']/master_df['Disk_area']
 
-# get the unique count of blades types in each df
-geo_df_uniqe_blade_count = len(geo_df['blades_name'].unique().sum())
-exp_df_uniqe_blade_count =  len(exp_df['blades_name'].unique().sum())
-blade_count_diff = exp_df_uniqe_blade_count - geo_df_uniqe_blade_count
-
-
-massage = (
-f"geo_df contain {geo_df_uniqe_blade_count } unique blade types.\n" 
-f"exp_df contain {exp_df_uniqe_blade_count} unique blade types.\n"   
-f"exp_df contain extra {blade_count_diff} blades in the dataset that do not have geo data "
-
-)
-print(massage)
-
-'
-# get names of the blades that do not have their geo_data available
-df_outer = pd.merge(exp_df,geo_df,on='blades_name',how="outer")
-
-df_outer.head()
-df_outer.shape
-
+master_df['solidity_value'].isna()
