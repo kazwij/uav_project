@@ -4,7 +4,11 @@ import numpy as np
 import missingno as msno
 import matplotlib.pyplot as plt
 import seaborn as sns 
-
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+import xgboost as xgb
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.impute import SimpleImputer
 #data loading on experiment
 
 df0 =  pd.read_csv("../data/experiment_vol1.csv")
@@ -130,16 +134,6 @@ missing_value_count = master_df['solidity_value'].isna().sum()
 missing_value =  round((missing_value_count/master_df.shape[0])*100,2)
 print(f'solidity values has {missing_value} % of missing values ')
 
-#missing values treating.
-
-# missing values precentage of each columns
-
-def missingvalueprecentage(col):
-    missing_value_count = master_df[col].isna().sum()
-    missing_value =  round((missing_value_count/master_df.shape[0])*100,2)
-    print(f'{col} has {missing_value} % of missing values ')
-for i in range(len(master_df.columns)):
-    print(master_df.columns[i])
 
 
 # blades that does not have a solidity value
@@ -152,9 +146,9 @@ print(f'{len(blades_missing_solidity_value['blades_name'].unique())} blades does
 #visual representation of missing values in the dataset.
 msno.bar(master_df)
 
+
 #Visualization
-
-
+type(master_df)
 master_df.plot(kind='scatter', x='number_of_blades', y = 'thrust_coefficient_output')
 master_df.columns
 
@@ -186,6 +180,102 @@ df_correlation  =master_df[[
 
 df_correlation
 
+master_df.dtypes
 sns.heatmap(df_correlation)
 
-master_df.isna().sum()
+# dropping columns that are not required for model development
+master_df = master_df.drop(columns=[
+'propellers_name', 'blades_name', 'propellers_brand_x',
+ 'propellers_brand_y'])
+master_df.columns
+
+#missing values treating.
+def missingvalueprecentage(col):
+    '''
+    This function will provide  missing values precentage of each columns
+    
+    '''    
+    missing_value_count = master_df[col].isna().sum()
+    missing_value =  round((missing_value_count/master_df.shape[0])*100,2)
+    print(f'{col}  has {missing_value} %  of missing values ')
+for col in master_df.columns:
+    missingvalueprecentage(col)
+
+print("sinnce missing values % is less than 10 %  of total value, dropping the missing values.")
+
+# dropping missing values and create 3 df for models 
+# model_1 - without missing values
+#model_2 - with missing values
+#model_3 - without solidity value
+ 
+model_1= master_df.dropna()
+model_2 = master_df
+model_3 = master_df.drop(columns=['solidityP_value'])
+
+########copy 
+# Identify features and target variables
+features = master_df.drop(columns=['thrust_coefficient_output', 'power_coefficient_output', 'efficiency_output'])
+target_thrust = master_df['thrust_coefficient_output']
+target_power = master_df['power_coefficient_output']
+target_efficiency = master_df['efficiency_output']
+
+
+# Split into training and testing sets
+X_train, X_test, y_train_thrust, y_test_thrust = train_test_split(features, target_thrust, test_size=0.2, random_state=42)
+X_train, X_test, y_train_power, y_test_power = train_test_split(features, target_power, test_size=0.2, random_state=42)
+X_train, X_test, y_train_efficiency, y_test_efficiency = train_test_split(features, target_efficiency, test_size=0.2, random_state=42)
+
+# Standardize features
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+
+# Model without missing value imputation
+model_without_imputation = xgb.XGBRegressor(objective='reg:squarederror')
+model_without_imputation.fit(X_train_scaled, y_train_thrust)
+
+# Predict and evaluate
+preds_without_imputation = model_without_imputation.predict(X_test_scaled)
+mse_without_imputation = mean_squared_error(y_test_thrust, preds_without_imputation)
+r2_without_imputation = r2_score(y_test_thrust, preds_without_imputation)
+
+# Model with missing value imputation
+imputer = SimpleImputer(strategy='mean')
+X_train_imputed = imputer.fit_transform(X_train)
+X_test_imputed = imputer.transform(X_test)
+X_train_imputed_scaled = scaler.fit_transform(X_train_imputed)
+X_test_imputed_scaled = scaler.transform(X_test_imputed)
+
+model_with_imputation = xgb.XGBRegressor(objective='reg:squarederror')
+model_with_imputation.fit(X_train_imputed_scaled, y_train_thrust)
+
+# Predict and evaluate
+preds_with_imputation = model_with_imputation.predict(X_test_imputed_scaled)
+mse_with_imputation = mean_squared_error(y_test_thrust, preds_with_imputation)
+r2_with_imputation = r2_score(y_test_thrust, preds_with_imputation)
+
+# Model without solidity value
+X_train_no_solidity = X_train.drop(columns=['solidity_value'])
+X_test_no_solidity = X_test.drop(columns=['solidity_value'])
+X_train_no_solidity_scaled = scaler.fit_transform(X_train_no_solidity)
+X_test_no_solidity_scaled = scaler.transform(X_test_no_solidity)
+
+model_without_solidity = xgb.XGBRegressor(objective='reg:squarederror')
+model_without_solidity.fit(X_train_no_solidity_scaled, y_train_thrust)
+
+# Predict and evaluate
+preds_without_solidity = model_without_solidity.predict(X_test_no_solidity_scaled)
+mse_without_solidity = mean_squared_error(y_test_thrust, preds_without_solidity)
+r2_without_solidity = r2_score(y_test_thrust, preds_without_solidity)
+
+print(f"Model without imputation: MSE = {mse_without_imputation}, R² = {r2_without_imputation}")
+print(f"Model with imputation: MSE = {mse_with_imputation}, R² = {r2_with_imputation}")
+print(f"Model without solidity: MSE = {mse_without_solidity}, R² = {r2_without_solidity}")
+
+
+
+
+
+
+### end
