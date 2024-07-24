@@ -1,6 +1,9 @@
 #importing libraries 
 import pandas as pd
 import numpy as np
+import missingno as msno
+import matplotlib.pyplot as plt
+import seaborn as sns 
 
 #data loading on experiment
 
@@ -127,6 +130,18 @@ missing_value_count = master_df['solidity_value'].isna().sum()
 missing_value =  round((missing_value_count/master_df.shape[0])*100,2)
 print(f'solidity values has {missing_value} % of missing values ')
 
+#missing values treating.
+
+# missing values precentage of each columns
+
+def missingvalueprecentage(col):
+    missing_value_count = master_df[col].isna().sum()
+    missing_value =  round((missing_value_count/master_df.shape[0])*100,2)
+    print(f'{col} has {missing_value} % of missing values ')
+for i in range(len(master_df.columns)):
+    print(master_df.columns[i])
+
+
 # blades that does not have a solidity value
 
 blades_missing_solidity_value = master_df[master_df['solidity_value'].isna()][['blades_name','solidity_value']]
@@ -134,3 +149,43 @@ blades_missing_solidity_value
 print(f"out of {len(master_df['blades_name'].unique())} unique blades types" )
 print(f'{len(blades_missing_solidity_value['blades_name'].unique())} blades does not have solidity values ')
 
+#visual representation of missing values in the dataset.
+msno.bar(master_df)
+
+#Visualization
+
+
+master_df.plot(kind='scatter', x='number_of_blades', y = 'thrust_coefficient_output')
+master_df.columns
+
+fig1 = master_df.plot(kind='scatter', x='power_coefficient_output', y = 'thrust_coefficient_output',title='power coefficiant vs trust coefficient')
+sns.scatterplot(x='power_coefficient_output' ,y='thrust_coefficient_output',data=master_df)
+master_df.plot(kind='scatter', x='power_coefficient_output', y = 'thrust_coefficient_output')
+
+print(f'since the solidity values consider to be very important parameter in UAV preformance below pair value comparisons done ')
+sns.pairplot(data=master_df,vars=['disk_area','solidity_value','beta_angle_relative_to_rotation'])
+plt.show()
+
+print(f'solidity value reduce with disk area. but no linear relationship shown ')
+print(f'higher the beta angle the solidity value tend to reduce')
+
+
+sns.pairplot(data=master_df,vars=['rpm_rotation_input','efficiency_output','solidity_value',])
+plt.show()
+master_df.dtypes
+master_df.columns
+df_correlation  =master_df[[
+    'number_of_blades', 'propellers_diameter_x', 'propellers_pitch_x',
+       'advanced_ratio_input', 'rpm_rotation_input',
+       'thrust_coefficient_output', 'power_coefficient_output',
+       'efficiency_output', 'propellers_diameter_y',
+       'propellers_pitch_y', 'adimensional_chord_c/R',
+       'adimensional_radius_r/R', 'beta_angle_relative_to_rotation', 'radius',
+       'chord_distribution', 'radius_distribution', 'blade_area',
+       'total_area_of_blades', 'disk_area', 'solidity_value']].dropna().corr()
+
+df_correlation
+
+sns.heatmap(df_correlation)
+
+master_df.isna().sum()
