@@ -9,6 +9,8 @@ from sklearn.preprocessing import StandardScaler
 import xgboost as xgb
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.impute import SimpleImputer
+
+
 #data loading on experiment
 
 df0 =  pd.read_csv("../data/experiment_vol1.csv")
@@ -20,6 +22,7 @@ df3 =  pd.read_csv("../data/geom_vol1.csv")
 df4 =  pd.read_csv("../data/geom_vol2.csv")
 df5 =  pd.read_csv("../data/geom_vol3.csv")
 
+# fuction to concat the files
 def concat_files(df_list):
     '''
     this function will take list of dataframes and concat them 
@@ -86,6 +89,7 @@ print(f'after dropping duplicates dataset  has {master_df.shape[0] } raws and {m
 
 print('master data set contain duplicated values. It is expected as several experiments can be done on single type blade  ')
 
+
 # calculate the chord distrubution and radius distribution 
 master_df['radius'] = master_df['propellers_diameter_x']/2
 master_df.columns
@@ -146,8 +150,98 @@ print(f'{len(blades_missing_solidity_value['blades_name'].unique())} blades does
 #visual representation of missing values in the dataset.
 msno.bar(master_df)
 
-
+## EDA ##
 #Visualization
+
+fig,axes = plt.subplots(3,3,figsize = (15,12))
+
+sns.histplot(data=master_df,x='thrust_coefficient_output',kde=True,color='blue',ax=axes[0,0])
+sns.histplot(data=master_df,x='power_coefficient_output',kde=True,color='yellow',ax=axes[0,1])
+sns.histplot(data=master_df,x='efficiency_output',kde=True,color='purple',ax=axes[0,2])
+sns.histplot(data=master_df,x='solidity_value',kde=True,color='teal',ax=axes[1,0])
+sns.histplot(data=master_df,x='disk_area',kde=True,color='orange',ax=axes[1,1])
+sns.histplot(data=master_df,x='chord_distribution',kde=True,color='red',ax=axes[1,2])
+sns.histplot(data=master_df,x='beta_angle_relative_to_rotation',kde=True,color='olive',ax=axes[2,0])
+sns.histplot(data=master_df,x='radius_distribution',kde=True,color='green',ax=axes[2,1])
+sns.histplot(data=master_df,x='total_area_of_blades',kde=True,color='brown',ax=axes[2,2])
+plt.show()
+
+def outlierchecker(df):
+    '''
+    This fuction will take a column of a dataset and check the outliers and return the sum of outliers 
+    '''
+    q1 = df.quantile(0.25)
+    q3 = df.quantile(0.75)
+    IQR = q3-q1
+    outliers = df[((df<(q1-1.5*IQR) )| (df> (q3+1.5*IQR)))] 
+    return len(outliers)
+
+print(f'check for outliers in thrust_coefficient_output and remove if any ')
+outlierchecker(master_df['thrust_coefficient_output'])
+sns.boxplot(x=master_df['thrust_coefficient_output'])
+plt.show()
+
+master_df.drop(master_df[(master_df['thrust_coefficient_output']<-0.07) | (master_df['thrust_coefficient_output']>0.2) ].index,inplace =True)
+sns.boxplot(x=master_df['thrust_coefficient_output'])
+
+print(f'check for outliers in power_coefficient_output and remove if any ')
+outlierchecker(master_df['power_coefficient_output'])
+sns.boxplot(x=master_df['power_coefficient_output'])
+plt.show()
+
+master_df.drop(master_df[(master_df['power_coefficient_output']>0.1) ].index,inplace =True)
+sns.boxplot(x=master_df['power_coefficient_output'])
+
+print(f'check for outliers in efficiency_output and remove if any ')
+outlierchecker(master_df['efficiency_output'])
+sns.boxplot(x=master_df['efficiency_output'])
+plt.show()
+
+master_df.drop(master_df[(master_df['efficiency_output']<-0.35)  ].index,inplace =True)
+sns.boxplot(x=master_df['efficiency_output'])
+
+print(f'check for outliers in solidity_values and remove if any ')
+outlierchecker(master_df['solidity_value'])
+sns.boxplot(x=master_df['solidity_value'])
+plt.show()
+
+master_df.drop(master_df[(master_df['solidity_value']>0.0475)  ].index,inplace =True)
+sns.boxplot(x=master_df['solidity_value'])
+
+print(f'check for outliers in  chord_distribution and remove if any ')
+outlierchecker(master_df['chord_distribution'])
+sns.boxplot(x=master_df['chord_distribution'])
+plt.show()
+
+master_df.drop(master_df[(master_df['chord_distribution']>1.4)  ].index,inplace =True)
+sns.boxplot(x=master_df['chord_distribution'])
+
+print(f'check for outliers in  radius_distribution and remove if any ')
+outlierchecker(master_df['radius_distribution'])
+sns.boxplot(x=master_df['radius_distribution'])
+plt.show()
+
+master_df.drop(master_df[(master_df['radius_distribution']>7.5)  ].index,inplace =True)
+sns.boxplot(x=master_df['radius_distribution'])
+
+print(f'check for outliers in  total_area_of_blades and remove if any ')
+outlierchecker(master_df['total_area_of_blades'])
+sns.boxplot(x=master_df['total_area_of_blades'])
+plt.show()
+
+master_df.drop(master_df[(master_df['total_area_of_blades']>8.5)  ].index,inplace =True)
+sns.boxplot(x=master_df['total_area_of_blades'])
+
+
+
+
+
+
+print(f'outliears removed')
+
+
+
+
 type(master_df)
 master_df.plot(kind='scatter', x='number_of_blades', y = 'thrust_coefficient_output')
 master_df.columns
@@ -162,6 +256,18 @@ plt.show()
 
 print(f'solidity value reduce with disk area. but no linear relationship shown ')
 print(f'higher the beta angle the solidity value tend to reduce')
+
+
+
+
+
+
+
+### bivarient analysis.
+plt.figure(figsize=(5,4))
+import seaborn as sns
+sns.jointplot(x='Avg. Session Length',y='Yearly Amount Spent',data=customers)
+plt.show()
 
 
 sns.pairplot(data=master_df,vars=['rpm_rotation_input','efficiency_output','solidity_value',])
@@ -181,7 +287,8 @@ df_correlation  =master_df[[
 df_correlation
 
 master_df.dtypes
-sns.heatmap(df_correlation)
+sns.heatmap(df_correlation,annot=True)
+plt.show()
 
 # dropping columns that are not required for model development
 master_df = master_df.drop(columns=[
@@ -210,7 +317,7 @@ print("sinnce missing values % is less than 10 %  of total value, dropping the m
  
 model_1= master_df.dropna()
 model_2 = master_df
-model_3 = master_df.drop(columns=['solidityP_value'])
+model_3 = master_df.drop(columns=['solidity_value'])
 
 ########copy 
 # Identify features and target variables
@@ -278,4 +385,3 @@ print(f"Model without solidity: MSE = {mse_without_solidity}, R² = {r2_without_
 
 
 
-### end
