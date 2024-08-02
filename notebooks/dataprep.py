@@ -72,6 +72,26 @@ master_df.describe().T
 print(f'A dataset called master_df suceesfully created by merging all datasets. ')
 print(f'it contain {master_df.shape[0]} raws and {master_df.shape[1]}  columns ')
 
+master_df.shape
+def outlier_checker(df, column):
+    q1 = df[column].quantile(0.25)
+    q3 = df[column].quantile(0.75)
+    IQR = q3 - q1
+    upper = q3 + 1.5 * IQR
+    lower = q1 - 1.5 * IQR
+    df = df[(df[column] >= lower) & (df[column] <= upper)]
+    return df
+
+columns_to_check = ['number_of_blades', 'propellers_diameter_x', 'propellers_pitch_x','advanced_ratio_input', 'rpm_rotation_input',
+       'thrust_coefficient_output', 'power_coefficient_output', 'efficiency_output', 'propellers_diameter_y', 'propellers_pitch_y',
+       'adimensional_chord_c/R', 'adimensional_radius_r/R','beta_angle_relative_to_rotation']
+
+for col in columns_to_check:
+    master_df = outlier_checker(master_df, col)
+
+
+master_df.shape
+
 # checking for missing values
 print('missing values in master_df') 
 print(master_df.isna().sum())
@@ -176,24 +196,6 @@ print('chord distribution is peak at 0.8 ')
 print('beta angle skewed to right and peak around 10-20')
 print('radias distribution almost having equal distribution')
 print('total area of blades uneven and more dense around 4')
-
-def outlier_checker(df, column):
-    q1 = df[column].quantile(0.25)
-    q3 = df[column].quantile(0.75)
-    IQR = q3 - q1
-    upper = q3 + 1.5 * IQR
-    lower = q1 - 1.5 * IQR
-    df = df[(df[column] >= lower) & (df[column] <= upper)]
-    return df
-
-columns_to_check = ['thrust_coefficient_output', 'power_coefficient_output', 'efficiency_output', 'solidity_value',
-                    'disk_area', 'chord_distribution', 'beta_angle_relative_to_rotation', 'radius_distribution', 
-                    'total_area_of_blades']
-
-for col in columns_to_check:
-    master_df = outlier_checker(master_df, col)
-
-print(f'outliears removed')
 
 #bivariant analysis againts thrust coefficient
 plt.figure(figsize=(5,4))
@@ -301,33 +303,16 @@ def missingvalueprecentage(col):
 for col in master_df.columns:
     missingvalueprecentage(col)
 
-print("sinnce missing values % is less than 10 %  of total value, dropping the missing values.")
+model_1= master_df
 
-
-# model_1 - without missing values
-#model_2 - with missing values imputation
-#model_3 - without solidity value
-
-
-################
-############
-##########
-
-model_1= master_df.dropna()
 imputer = SimpleImputer(strategy='mean')
-df_imputed = pd.DataFrame(imputer.fit_transform(numerical_columns), columns=numerical_columns.columns)
-model_2 = master_df(imputer.fit_transform(master_df), columns=master_df.columns)
+df_imputed = pd.DataFrame(imputer.fit_transform(master_df), columns=master_df.columns)
+model_2 = df_imputed
+
 model_3 = master_df.drop(columns=['solidity_value'])
 
-
-
-
-##################
-#############
-################
-
-
-model_3.isna().sum()
+model_2.describe().T
+model_3.describe().T
 # performance of a propeller is given by efficiency,power and thrust coefficients. So in order to identify the preformace of a propeller we need to 
 # develop models for each parameters 
 
@@ -400,7 +385,6 @@ def model_builder(number, df):
     plt.tight_layout()
     plt.show()
      
-
 # modeling for 2 blade propellers 
 
 model_builder(2, model_1)
