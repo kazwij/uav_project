@@ -10,7 +10,6 @@ import xgboost as xgb
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.impute import SimpleImputer
 
-
 #data loading on experiment
 
 df0 =  pd.read_csv("../data/experiment_vol1.csv")
@@ -66,11 +65,12 @@ EDA - Exploratary Data Analysis on exp_df and geo_df.
 #exp_df and geo_df merge to single df as master_df.
 #using "outer" method to merge both to avoid any data lost 
 master_df = pd.merge(exp_df,geo_df,on='blades_name',how='outer')
+master_df.columns
 master_df.head()
 master_df.info()
+master_df.describe().T
 print(f'A dataset called master_df suceesfully created by merging all datasets. ')
 print(f'it contain {master_df.shape[0]} raws and {master_df.shape[1]}  columns ')
-# dataset contain NaN values.
 
 # checking for missing values
 print('missing values in master_df') 
@@ -139,7 +139,6 @@ missing_value =  round((missing_value_count/master_df.shape[0])*100,2)
 print(f'solidity values has {missing_value} % of missing values ')
 
 
-
 # blades that does not have a solidity value
 
 blades_missing_solidity_value = master_df[master_df['solidity_value'].isna()][['blades_name','solidity_value']]
@@ -149,108 +148,119 @@ print(f'{len(blades_missing_solidity_value['blades_name'].unique())} blades does
 
 #visual representation of missing values in the dataset.
 msno.bar(master_df)
-
+plt.title('Missing values in the data - bar chart represent ',fontsize = 20)
+plt.show()
 ## EDA ##
 #Visualization
 
-fig,axes = plt.subplots(3,3,figsize = (15,12))
-
-sns.histplot(data=master_df,x='thrust_coefficient_output',kde=True,color='blue',ax=axes[0,0])
-sns.histplot(data=master_df,x='power_coefficient_output',kde=True,color='yellow',ax=axes[0,1])
-sns.histplot(data=master_df,x='efficiency_output',kde=True,color='purple',ax=axes[0,2])
-sns.histplot(data=master_df,x='solidity_value',kde=True,color='teal',ax=axes[1,0])
-sns.histplot(data=master_df,x='disk_area',kde=True,color='orange',ax=axes[1,1])
-sns.histplot(data=master_df,x='chord_distribution',kde=True,color='red',ax=axes[1,2])
-sns.histplot(data=master_df,x='beta_angle_relative_to_rotation',kde=True,color='olive',ax=axes[2,0])
-sns.histplot(data=master_df,x='radius_distribution',kde=True,color='green',ax=axes[2,1])
-sns.histplot(data=master_df,x='total_area_of_blades',kde=True,color='brown',ax=axes[2,2])
+fig, axes = plt.subplots(3, 3, figsize=(15, 12))
+sns.histplot(data=master_df, x='thrust_coefficient_output', kde=True, color='blue', ax=axes[0, 0])
+sns.histplot(data=master_df, x='power_coefficient_output', kde=True, color='yellow', ax=axes[0, 1])
+sns.histplot(data=master_df, x='efficiency_output', kde=True, color='purple', ax=axes[0, 2])
+sns.histplot(data=master_df, x='solidity_value', kde=True, color='teal', ax=axes[1, 0])
+sns.histplot(data=master_df, x='disk_area', kde=True, color='orange', ax=axes[1, 1])
+sns.histplot(data=master_df, x='chord_distribution', kde=True, color='red', ax=axes[1, 2])
+sns.histplot(data=master_df, x='beta_angle_relative_to_rotation', kde=True, color='olive', ax=axes[2, 0])
+sns.histplot(data=master_df, x='radius_distribution', kde=True, color='green', ax=axes[2, 1])
+sns.histplot(data=master_df, x='total_area_of_blades', kde=True, color='brown', ax=axes[2, 2])
+fig.suptitle('Visual Representation of the Data Distribution', fontsize=20)
+plt.tight_layout(rect=[0, 0.03, 1, 0.95])  
 plt.show()
 
-def outlierchecker(df):
-    '''
-    This fuction will take a column of a dataset and check the outliers and return the sum of outliers 
-    '''
-    q1 = df.quantile(0.25)
-    q3 = df.quantile(0.75)
-    IQR = q3-q1
-    outliers = df[((df<(q1-1.5*IQR) )| (df> (q3+1.5*IQR)))] 
-    return len(outliers)
+print('thrust coefficient values peak area noticeble around 0.1')
+print('power coefficient concentrate around 0.04 and 0.06 value area and the peak seems to haveing around 0.05')
+print('efficiency output has large number of non values and peak around 0.6')
+print('solidity value peak is around 0.025')
+print('disk area concetrate arounf 50 and 100')
+print('chord distribution is peak at 0.8 ')
+print('beta angle skewed to right and peak around 10-20')
+print('radias distribution almost having equal distribution')
+print('total area of blades uneven and more dense around 4')
 
-print(f'check for outliers in thrust_coefficient_output and remove if any ')
-outlierchecker(master_df['thrust_coefficient_output'])
-sns.boxplot(x=master_df['thrust_coefficient_output'])
-plt.show()
+def outlier_checker(df, column):
+    q1 = df[column].quantile(0.25)
+    q3 = df[column].quantile(0.75)
+    IQR = q3 - q1
+    upper = q3 + 1.5 * IQR
+    lower = q1 - 1.5 * IQR
+    df = df[(df[column] >= lower) & (df[column] <= upper)]
+    return df
 
-master_df.drop(master_df[(master_df['thrust_coefficient_output']<-0.07) | (master_df['thrust_coefficient_output']>0.2) ].index,inplace =True)
-sns.boxplot(x=master_df['thrust_coefficient_output'])
+columns_to_check = ['thrust_coefficient_output', 'power_coefficient_output', 'efficiency_output', 'solidity_value',
+                    'disk_area', 'chord_distribution', 'beta_angle_relative_to_rotation', 'radius_distribution', 
+                    'total_area_of_blades']
 
-print(f'check for outliers in power_coefficient_output and remove if any ')
-outlierchecker(master_df['power_coefficient_output'])
-sns.boxplot(x=master_df['power_coefficient_output'])
-plt.show()
-
-master_df.drop(master_df[(master_df['power_coefficient_output']>0.1) ].index,inplace =True)
-sns.boxplot(x=master_df['power_coefficient_output'])
-
-print(f'check for outliers in efficiency_output and remove if any ')
-outlierchecker(master_df['efficiency_output'])
-sns.boxplot(x=master_df['efficiency_output'])
-plt.show()
-
-master_df.drop(master_df[(master_df['efficiency_output']<-0.35)  ].index,inplace =True)
-sns.boxplot(x=master_df['efficiency_output'])
-
-print(f'check for outliers in solidity_values and remove if any ')
-outlierchecker(master_df['solidity_value'])
-sns.boxplot(x=master_df['solidity_value'])
-plt.show()
-
-master_df.drop(master_df[(master_df['solidity_value']>0.0475)  ].index,inplace =True)
-sns.boxplot(x=master_df['solidity_value'])
-
-print(f'check for outliers in  chord_distribution and remove if any ')
-outlierchecker(master_df['chord_distribution'])
-sns.boxplot(x=master_df['chord_distribution'])
-plt.show()
-
-master_df.drop(master_df[(master_df['chord_distribution']>1.4)  ].index,inplace =True)
-sns.boxplot(x=master_df['chord_distribution'])
-
-print(f'check for outliers in  radius_distribution and remove if any ')
-outlierchecker(master_df['radius_distribution'])
-sns.boxplot(x=master_df['radius_distribution'])
-plt.show()
-
-master_df.drop(master_df[(master_df['radius_distribution']>7.5)  ].index,inplace =True)
-sns.boxplot(x=master_df['radius_distribution'])
-
-print(f'check for outliers in  total_area_of_blades and remove if any ')
-outlierchecker(master_df['total_area_of_blades'])
-sns.boxplot(x=master_df['total_area_of_blades'])
-plt.show()
-
-master_df.drop(master_df[(master_df['total_area_of_blades']>8.5)  ].index,inplace =True)
-sns.boxplot(x=master_df['total_area_of_blades'])
-
-
-
-
-
+for col in columns_to_check:
+    master_df = outlier_checker(master_df, col)
 
 print(f'outliears removed')
 
+#bivariant analysis againts thrust coefficient
+plt.figure(figsize=(5,4))
+sns.jointplot(x='propellers_diameter_x',y='thrust_coefficient_output',data=master_df)
+plt.show()
+print('according to the diagram propellers diameter is a major factor for thrust coefficient, but need more comprehensive analysis with other  factors when modeling ')
 
+plt.figure(figsize=(5,4))
+sns.jointplot(x='advanced_ratio_input',y='thrust_coefficient_output',data=master_df)
+plt.show()
 
+print('this plot helps in understanding the inverse relationship between advanced_ratio_input and thrust_coefficient_output. ')
+print(' The advanced ratio input is a crucial factor in predicting the thrust coefficient, with higher advanced ratios typically resulting in lower thrust coefficients. This insight can be valuable for modeling and optimizing propeller performance')
 
-type(master_df)
-master_df.plot(kind='scatter', x='number_of_blades', y = 'thrust_coefficient_output')
-master_df.columns
+plt.figure(figsize=(5,4))
+sns.jointplot(x='rpm_rotation_input',y='thrust_coefficient_output',data=master_df)
+plt.show()
+print("The plot reveals that thrust_coefficient_output generally increases with higher rpm_rotation_input values, with most data points concentrated between 0.075 and 0.15 for thrust_coefficient_output across a wide range of rpm_rotation_input")
 
-fig1 = master_df.plot(kind='scatter', x='power_coefficient_output', y = 'thrust_coefficient_output',title='power coefficiant vs trust coefficient')
-sns.scatterplot(x='power_coefficient_output' ,y='thrust_coefficient_output',data=master_df)
-master_df.plot(kind='scatter', x='power_coefficient_output', y = 'thrust_coefficient_output')
+plt.figure(figsize=(5,4))
+sns.jointplot(x='total_area_of_blades',y='thrust_coefficient_output',kind='hist',data=master_df)
+plt.show()
+print('when considering the histrogram propellers blades total area between 3-5 tend to provide coefficient between 0-0.1 ')
 
-print(f'since the solidity values consider to be very important parameter in UAV preformance below pair value comparisons done ')
+#bivariant analysis againts power_coefficient_output
+
+plt.figure(figsize=(5,4))
+sns.jointplot(x='propellers_diameter_x',y='power_coefficient_output',data=master_df)
+plt.show()
+print('it seems higer the propellers diameter lower the power coefficient, more propellers have diamter range of 9-12.5 and gibing higher power coefficient')
+
+plt.figure(figsize=(5,4))
+sns.jointplot(x='advanced_ratio_input',y='power_coefficient_output',data=master_df)
+plt.show()
+print('power coefficient and advance ratio input having inverrse relationship')
+
+plt.figure(figsize=(5,4))
+sns.jointplot(x='rpm_rotation_input',y='power_coefficient_output',kind='hist',data=master_df)
+plt.show()
+print("dara seems more concentraded arond rpm 4000 , 5000,and 6000 giving power coeffcient range from 0 - 0.08")
+
+plt.figure(figsize=(5,4))
+sns.jointplot(x='total_area_of_blades',y='power_coefficient_output',kind='hist',data=master_df)
+plt.show()
+print('data concentration arounf 3-5 total blade area')
+
+#bivariant analysis againts efficiency _output 
+plt.figure(figsize=(5,4))
+sns.jointplot(x='propellers_diameter_x',y='efficiency_output',data=master_df)
+plt.show()
+print('')
+
+plt.figure(figsize=(5,4))
+sns.jointplot(x='advanced_ratio_input',y='efficiency_output',data=master_df)
+plt.show()
+print('power coefficient and advance ratio input having inverrse relationship')
+
+plt.figure(figsize=(5,4))
+sns.jointplot(x='rpm_rotation_input',y='efficiency_output',kind='hist',data=master_df)
+plt.show()
+print("dara seems more concentraded arond rpm 4000 , 5000,and 6000 giving power coeffcient range from 0 - 0.08")
+
+plt.figure(figsize=(5,4))
+sns.jointplot(x='total_area_of_blades',y='efficiency_output',kind='hist',data=master_df)
+plt.show()
+print('data concentration arounf 3-5 total blade area')
+
 sns.pairplot(data=master_df,vars=['disk_area','solidity_value','beta_angle_relative_to_rotation'])
 plt.show()
 
@@ -258,37 +268,20 @@ print(f'solidity value reduce with disk area. but no linear relationship shown '
 print(f'higher the beta angle the solidity value tend to reduce')
 
 
+# correlation analysis
 
+# Identify numerical columns
+numerical_columns = master_df.select_dtypes(include=[np.number]).columns
+type(numerical_columns)
+# Compute the correlation matrix only for numerical columns
+corr_matrix = master_df[numerical_columns].corr()
 
-
-
-
-### bivarient analysis.
-plt.figure(figsize=(5,4))
-import seaborn as sns
-sns.jointplot(x='Avg. Session Length',y='Yearly Amount Spent',data=customers)
+# Plot the correlation heatmap
+plt.figure(figsize=(12, 8))
+sns.heatmap(corr_matrix, annot=True, cmap='coolwarm')
+plt.title('correlation between numerical variables ', fontsize =20)
 plt.show()
 
-
-sns.pairplot(data=master_df,vars=['rpm_rotation_input','efficiency_output','solidity_value',])
-plt.show()
-master_df.dtypes
-master_df.columns
-df_correlation  =master_df[[
-    'number_of_blades', 'propellers_diameter_x', 'propellers_pitch_x',
-       'advanced_ratio_input', 'rpm_rotation_input',
-       'thrust_coefficient_output', 'power_coefficient_output',
-       'efficiency_output', 'propellers_diameter_y',
-       'propellers_pitch_y', 'adimensional_chord_c/R',
-       'adimensional_radius_r/R', 'beta_angle_relative_to_rotation', 'radius',
-       'chord_distribution', 'radius_distribution', 'blade_area',
-       'total_area_of_blades', 'disk_area', 'solidity_value']].dropna().corr()
-
-df_correlation
-
-master_df.dtypes
-sns.heatmap(df_correlation,annot=True)
-plt.show()
 
 # dropping columns that are not required for model development
 master_df = master_df.drop(columns=[
@@ -310,16 +303,212 @@ for col in master_df.columns:
 
 print("sinnce missing values % is less than 10 %  of total value, dropping the missing values.")
 
-# dropping missing values and create 3 df for models 
+
 # model_1 - without missing values
-#model_2 - with missing values
+#model_2 - with missing values imputation
 #model_3 - without solidity value
- 
+
+
+################
+############
+##########
+
 model_1= master_df.dropna()
-model_2 = master_df
+imputer = SimpleImputer(strategy='mean')
+df_imputed = pd.DataFrame(imputer.fit_transform(numerical_columns), columns=numerical_columns.columns)
+model_2 = master_df(imputer.fit_transform(master_df), columns=master_df.columns)
 model_3 = master_df.drop(columns=['solidity_value'])
 
-########copy 
+
+
+
+##################
+#############
+################
+
+
+model_3.isna().sum()
+# performance of a propeller is given by efficiency,power and thrust coefficients. So in order to identify the preformace of a propeller we need to 
+# develop models for each parameters 
+
+def split_data(features, target):
+    return train_test_split(features, target, test_size=0.2, random_state=42)
+
+# Scale features
+def scale_features(X_train, X_test):
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    return X_train_scaled, X_test_scaled
+
+# Model training and evaluation
+
+# Model training, evaluation, and plotting
+def train_and_evaluate(X_train, X_test, y_train, y_test, description, ax):
+    model = xgb.XGBRegressor(objective='reg:squarederror')
+    model.fit(X_train, y_train)
+    preds = model.predict(X_test)
+    mse = mean_squared_error(y_test, preds)
+    r2 = r2_score(y_test, preds)
+    print(f"{description}: MSE = {mse}, R² = {r2}")
+    
+    # Plotting Actual vs Predicted values
+    ax.scatter(y_test, preds, color='blue')
+    ax.set_xlabel('Actual Values')
+    ax.set_ylabel('Predicted Values')
+    ax.set_title(f'{description} - Actual vs. Predicted Values')
+    ax.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], '--k')
+    
+    return preds, mse, r2
+
+# Feature and target extraction (assuming this function needs to be defined)
+def feature_and_target(df):
+    # Placeholder for actual feature and target extraction logic
+    features = df.drop(columns=['thrust_coefficient_output', 'power_coefficient_output', 'efficiency_output'])
+    target_thrust = df['thrust_coefficient_output']
+    target_power = df['power_coefficient_output']
+    target_efficiency = df['efficiency_output']
+    return features, target_thrust, target_power, target_efficiency
+
+# Model builder for different blade numbers
+def model_builder(number, df):
+    model = df[df['number_of_blades'] == number]
+ 
+    features, target_thrust, target_power, target_efficiency = feature_and_target(model)
+   
+    # Prepare data splits
+    X_train, X_test, y_train_thrust, y_test_thrust = split_data(features, target_thrust)
+    _, _, y_train_power, y_test_power = split_data(features, target_power)
+    _, _, y_train_efficiency, y_test_efficiency = split_data(features, target_efficiency)
+
+    # Standardize features
+    X_train_scaled, X_test_scaled = scale_features(X_train, X_test)
+
+    # Prepare subplots
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    
+    # Train and evaluate models for each target
+    print("Thrust Model Evaluation")
+    train_and_evaluate(X_train_scaled, X_test_scaled, y_train_thrust, y_test_thrust, "Thrust", axes[0])
+
+    print("Power Model Evaluation")
+    train_and_evaluate(X_train_scaled, X_test_scaled, y_train_power, y_test_power, "Power", axes[1])
+
+    print("Efficiency Model Evaluation")
+    train_and_evaluate(X_train_scaled, X_test_scaled, y_train_efficiency, y_test_efficiency, "Efficiency", axes[2])
+    
+    plt.tight_layout()
+    plt.show()
+     
+
+# modeling for 2 blade propellers 
+
+model_builder(2, model_1)
+model_builder(2,model_2)
+model_builder(2,model_3)
+
+blade2_model_evaluation  = '''
+#################
+MSE 
+
+
+################
+
+'''
+
+
+
+print
+# modeling for 2 blade propellers 
+
+model_builder(3,model_1)
+model_builder(3,model_2)
+model_builder(3,model_3)
+
+# modeling for 2 blade propellers 
+
+model_builder(4,model_1)
+model_builder(4,model_2)
+model_builder(4,model_3)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Identify features and target variables
 features = master_df.drop(columns=['thrust_coefficient_output', 'power_coefficient_output', 'efficiency_output'])
 target_thrust = master_df['thrust_coefficient_output']
