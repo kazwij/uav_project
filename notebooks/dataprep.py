@@ -21,6 +21,11 @@ df3 =  pd.read_csv("../data/geom_vol1.csv")
 df4 =  pd.read_csv("../data/geom_vol2.csv")
 df5 =  pd.read_csv("../data/geom_vol3.csv")
 
+df0.columns
+
+df3.columns
+
+
 # fuction to concat the files
 def concat_files(df_list):
     '''
@@ -64,33 +69,15 @@ EDA - Exploratary Data Analysis on exp_df and geo_df.
 '''
 #exp_df and geo_df merge to single df as master_df.
 #using "outer" method to merge both to avoid any data lost 
-master_df = pd.merge(exp_df,geo_df,on='blades_name',how='outer')
+master_df = pd.merge(exp_df,geo_df,how='left')
 master_df.columns
+master_df.shape
 master_df.head()
 master_df.info()
 master_df.describe().T
 print(f'A dataset called master_df suceesfully created by merging all datasets. ')
 print(f'it contain {master_df.shape[0]} raws and {master_df.shape[1]}  columns ')
 
-master_df.shape
-def outlier_checker(df, column):
-    q1 = df[column].quantile(0.25)
-    q3 = df[column].quantile(0.75)
-    IQR = q3 - q1
-    upper = q3 + 1.5 * IQR
-    lower = q1 - 1.5 * IQR
-    df = df[(df[column] >= lower) & (df[column] <= upper)]
-    return df
-
-columns_to_check = ['number_of_blades', 'propellers_diameter_x', 'propellers_pitch_x','advanced_ratio_input', 'rpm_rotation_input',
-       'thrust_coefficient_output', 'power_coefficient_output', 'efficiency_output', 'propellers_diameter_y', 'propellers_pitch_y',
-       'adimensional_chord_c/R', 'adimensional_radius_r/R','beta_angle_relative_to_rotation']
-
-for col in columns_to_check:
-    master_df = outlier_checker(master_df, col)
-
-
-master_df.shape
 
 # checking for missing values
 print('missing values in master_df') 
@@ -111,7 +98,7 @@ print('master data set contain duplicated values. It is expected as several expe
 
 
 # calculate the chord distrubution and radius distribution 
-master_df['radius'] = master_df['propellers_diameter_x']/2
+master_df['radius'] = master_df['propellers_diameter']/2
 master_df.columns
 master_df['chord_distribution'] = master_df['radius']*master_df['adimensional_chord_c/R']
 master_df['radius_distribution'] = master_df['radius']*master_df['adimensional_radius_r/R']
@@ -173,6 +160,8 @@ plt.show()
 ## EDA ##
 #Visualization
 
+
+
 fig, axes = plt.subplots(3, 3, figsize=(15, 12))
 sns.histplot(data=master_df, x='thrust_coefficient_output', kde=True, color='blue', ax=axes[0, 0])
 sns.histplot(data=master_df, x='power_coefficient_output', kde=True, color='yellow', ax=axes[0, 1])
@@ -187,6 +176,7 @@ fig.suptitle('Visual Representation of the Data Distribution', fontsize=20)
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])  
 plt.show()
 
+
 print('thrust coefficient values peak area noticeble around 0.1')
 print('power coefficient concentrate around 0.04 and 0.06 value area and the peak seems to haveing around 0.05')
 print('efficiency output has large number of non values and peak around 0.6')
@@ -197,9 +187,31 @@ print('beta angle skewed to right and peak around 10-20')
 print('radias distribution almost having equal distribution')
 print('total area of blades uneven and more dense around 4')
 
+
+
+#master_df['propellers_pitch_x'].value_counts()
+def outlier_checker(df, column):
+    q1 = df[column].quantile(0.25)
+    q3 = df[column].quantile(0.75)
+    IQR = q3 - q1
+    upper = q3 + 1.5 * IQR
+    lower = q1 - 1.5 * IQR
+    df = df[(df[column] >= lower) & (df[column] <= upper)]
+    return df
+
+columns_to_check = [ 'thrust_coefficient_output', 'power_coefficient_output', 'efficiency_output']
+       
+
+for col in columns_to_check:
+    master_df = outlier_checker(master_df, col)
+
+master_df['propellers_diameter'].value_counts()
+master_df.shape
+
+
 #bivariant analysis againts thrust coefficient
 plt.figure(figsize=(5,4))
-sns.jointplot(x='propellers_diameter_x',y='thrust_coefficient_output',data=master_df)
+sns.jointplot(x='propellers_diameter',y='thrust_coefficient_output',data=master_df)
 plt.show()
 print('according to the diagram propellers diameter is a major factor for thrust coefficient, but need more comprehensive analysis with other  factors when modeling ')
 
@@ -223,7 +235,7 @@ print('when considering the histrogram propellers blades total area between 3-5 
 #bivariant analysis againts power_coefficient_output
 
 plt.figure(figsize=(5,4))
-sns.jointplot(x='propellers_diameter_x',y='power_coefficient_output',data=master_df)
+sns.jointplot(x='propellers_diameter',y='power_coefficient_output',data=master_df)
 plt.show()
 print('it seems higer the propellers diameter lower the power coefficient, more propellers have diamter range of 9-12.5 and gibing higher power coefficient')
 
@@ -244,7 +256,7 @@ print('data concentration arounf 3-5 total blade area')
 
 #bivariant analysis againts efficiency _output 
 plt.figure(figsize=(5,4))
-sns.jointplot(x='propellers_diameter_x',y='efficiency_output',data=master_df)
+sns.jointplot(x='propellers_diameter',y='efficiency_output',data=master_df)
 plt.show()
 print('')
 
@@ -287,8 +299,8 @@ plt.show()
 
 # dropping columns that are not required for model development
 master_df = master_df.drop(columns=[
-'propellers_name', 'blades_name', 'propellers_brand_x',
- 'propellers_brand_y'])
+'propellers_name', 'blades_name', 'propellers_brand',
+ 'propellers_brand'])
 master_df.columns
 
 #missing values treating.
@@ -303,16 +315,14 @@ def missingvalueprecentage(col):
 for col in master_df.columns:
     missingvalueprecentage(col)
 
-model_1= master_df
+model_1= master_df # without imputation
 
 imputer = SimpleImputer(strategy='mean')
 df_imputed = pd.DataFrame(imputer.fit_transform(master_df), columns=master_df.columns)
-model_2 = df_imputed
+model_2 = df_imputed # with imputation
 
-model_3 = master_df.drop(columns=['solidity_value'])
+model_3 = master_df.drop(columns=['solidity_value']) #without solidity value
 
-model_2.describe().T
-model_3.describe().T
 # performance of a propeller is given by efficiency,power and thrust coefficients. So in order to identify the preformace of a propeller we need to 
 # develop models for each parameters 
 
@@ -393,21 +403,48 @@ model_builder(2,model_3)
 
 blade2_model_evaluation  = '''
 #################
-MSE 
+Model  performance evaluation when blade count is 2
 
+Model 1 : without missing value imputation 
+has the best performance for Thrust and Power.
+
+Model 2: with missing value imputation
+has the best performance for Efficiency.
+
+Model 3 : without solidity value 
+has the lowest performance across all metrics.
 
 ################
 
 '''
 
-
-
-print
-# modeling for 2 blade propellers 
+print(blade2_model_evaluation)
+# modeling for 2 blade propeller
 
 model_builder(3,model_1)
 model_builder(3,model_2)
 model_builder(3,model_3)
+
+blade3_model_evaluation  = '''
+#################
+Model  performance evaluation when blade count is 3
+
+Model 1 : without missing value imputation 
+has the lowest MSE for Power but slightly more scatter and outliers in Efficiency 
+compared to the other models
+
+Model 2: with missing value imputation
+performs well but is slightly inferior to Model 3, particularly in Power and Efficiency.
+
+Model 3 : without solidity value 
+shows the best overall performance based on both the metrics and visualization, 
+with the lowest MSE for Thrust and Efficiency and highest R² values
+################
+
+'''
+
+print(blade3_model_evaluation)
+
 
 # modeling for 2 blade propellers 
 
@@ -416,145 +453,21 @@ model_builder(4,model_2)
 model_builder(4,model_3)
 
 
+blade4_model_evaluation  = '''
+#################
+Model  performance evaluation when blade count is 4
 
+Model 1 : without missing value imputation 
+Best Power performance, but slightly lower Efficiency R².
 
+Model 2: with missing value imputation
+Best Efficiency performance, but higher Thrust MSE.
 
+Model 3 : without solidity value 
+Best Thrust performance (lowest MSE, highest R²), but lower Power performance
+################
 
+'''
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Identify features and target variables
-features = master_df.drop(columns=['thrust_coefficient_output', 'power_coefficient_output', 'efficiency_output'])
-target_thrust = master_df['thrust_coefficient_output']
-target_power = master_df['power_coefficient_output']
-target_efficiency = master_df['efficiency_output']
-
-
-# Split into training and testing sets
-X_train, X_test, y_train_thrust, y_test_thrust = train_test_split(features, target_thrust, test_size=0.2, random_state=42)
-X_train, X_test, y_train_power, y_test_power = train_test_split(features, target_power, test_size=0.2, random_state=42)
-X_train, X_test, y_train_efficiency, y_test_efficiency = train_test_split(features, target_efficiency, test_size=0.2, random_state=42)
-
-# Standardize features
-scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test)
-
-
-# Model without missing value imputation
-model_without_imputation = xgb.XGBRegressor(objective='reg:squarederror')
-model_without_imputation.fit(X_train_scaled, y_train_thrust)
-
-# Predict and evaluate
-preds_without_imputation = model_without_imputation.predict(X_test_scaled)
-mse_without_imputation = mean_squared_error(y_test_thrust, preds_without_imputation)
-r2_without_imputation = r2_score(y_test_thrust, preds_without_imputation)
-
-# Model with missing value imputation
-imputer = SimpleImputer(strategy='mean')
-X_train_imputed = imputer.fit_transform(X_train)
-X_test_imputed = imputer.transform(X_test)
-X_train_imputed_scaled = scaler.fit_transform(X_train_imputed)
-X_test_imputed_scaled = scaler.transform(X_test_imputed)
-
-model_with_imputation = xgb.XGBRegressor(objective='reg:squarederror')
-model_with_imputation.fit(X_train_imputed_scaled, y_train_thrust)
-
-# Predict and evaluate
-preds_with_imputation = model_with_imputation.predict(X_test_imputed_scaled)
-mse_with_imputation = mean_squared_error(y_test_thrust, preds_with_imputation)
-r2_with_imputation = r2_score(y_test_thrust, preds_with_imputation)
-
-# Model without solidity value
-X_train_no_solidity = X_train.drop(columns=['solidity_value'])
-X_test_no_solidity = X_test.drop(columns=['solidity_value'])
-X_train_no_solidity_scaled = scaler.fit_transform(X_train_no_solidity)
-X_test_no_solidity_scaled = scaler.transform(X_test_no_solidity)
-
-model_without_solidity = xgb.XGBRegressor(objective='reg:squarederror')
-model_without_solidity.fit(X_train_no_solidity_scaled, y_train_thrust)
-
-# Predict and evaluate
-preds_without_solidity = model_without_solidity.predict(X_test_no_solidity_scaled)
-mse_without_solidity = mean_squared_error(y_test_thrust, preds_without_solidity)
-r2_without_solidity = r2_score(y_test_thrust, preds_without_solidity)
-
-print(f"Model without imputation: MSE = {mse_without_imputation}, R² = {r2_without_imputation}")
-print(f"Model with imputation: MSE = {mse_with_imputation}, R² = {r2_with_imputation}")
-print(f"Model without solidity: MSE = {mse_without_solidity}, R² = {r2_without_solidity}")
-
-
-
-
-
+print(blade4_model_evaluation)
 
